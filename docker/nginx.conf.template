@@ -58,6 +58,19 @@ server {
         proxy_read_timeout 3600s;
     }
 
+    # STRM Indexer: sublistas e pedaços HLS do /play (a lista do .strm usa caminhos /play/... relativos,
+    # que o app abre por este domínio). O indexador só aceita endereços assinados por ele (h=).
+    # Só sublistas e pedaços: a lista principal (/play/<chave>) continua só para o Jellyfin.
+    location ~ ^/play/[A-Za-z0-9._-]+/(p\.m3u8|s\.ts)$ {
+        limit_except GET { deny all; }
+        proxy_pass ${INDEXER_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+
     # Seerr / Jellyseerr (cookie da sessão fica restrito a /seerr/)
     location /seerr/ {
         proxy_pass ${SEERR_UPSTREAM}/;
