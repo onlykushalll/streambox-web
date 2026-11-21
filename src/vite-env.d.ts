@@ -5,4 +5,3 @@ interface Window {
 }
 
 declare module 'sb-tv-polyfills';
-declare module 'flex-gap-polyfill';

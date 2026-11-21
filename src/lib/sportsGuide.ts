@@ -24,15 +24,15 @@ const LIVE = /[\s\-–:(]*\bao vivo\b[\s)]*/gi;
 const REPLAY = /^\s*(?:vt|reprise|compacto|melhores momentos)\s*[-–:]\s*|\s*[-–(]\s*(?:vt|reprise)\s*\)?\s*$/i;
 const NOT_TEAM = /^(d[aeo]s?|em|no|na|para|com)\s/i;
 const EVENT_WORDS = new RegExp(
-  '(^|[^\\p{L}])(gp|grande pr[eê]mio|f[oó]rmula|f1|f2|f3|motogp|moto ?[23]|stock car|nascar|indy|rally|nfl|nba|nhl|mlb|wnba|ncaa|ufc|' +
+  '(^|[^a-zà-ÿ])(gp|grande pr[eê]mio|f[oó]rmula|f1|f2|f3|motogp|moto ?[23]|stock car|nascar|indy|rally|nfl|nba|nhl|mlb|wnba|ncaa|ufc|' +
   'boxe|luta|mma|bellator|pfl|t[eê]nis|atp|wta|v[oô]lei|basquete|handebol|futsal|corrida|etapa|final|semifinal|' +
   'quartas|copa|campeonato|liga|ta[cç]a|torneio|grand slam|open|golfe|pga|surf|wsl|ciclismo|tour|maratona|' +
-  'ol[ií]mpi\\p{L}*|mundial|jogo|partida|rodada|supercopa|libertadores|sul-?americana|champions|premier|brasileir[aã]o)(?![\\p{L}])', 'iu');
+  'ol[ií]mpi[a-zà-ÿ]*|mundial|jogo|partida|rodada|supercopa|libertadores|sul-?americana|champions|premier|brasileir[aã]o)(?![a-zà-ÿ])', 'i');
 const SHOWS = new RegExp(
-  '(^|[^\\p{L}])(sportscenter|news|resenha|linha de passe|reda[cç][aã]o|giro|abre o jogo|pr[eé]-jogo|p[oó]s-jogo|depois do jogo|' +
+  '(^|[^a-zà-ÿ])(sportscenter|news|resenha|linha de passe|reda[cç][aã]o|giro|abre o jogo|pr[eé]-jogo|p[oó]s-jogo|depois do jogo|' +
   'aquecimento|t[aá] on|bola da vez|troca de passes|sele[cç][aã]o sportv|fechamento|esporte total|tempo t[eé]cnico|' +
   'momentos?|ol[eé]+ s\\.?a|equipe f|baú|bau do esporte|programa[cç][aã]o|stories|inside line|this week|action|' +
-  'especial|document[aá]rio|filmes?|film|mesa-redonda|debate|entrevista|bate-papo|show|replay|highlights|redzone)(?![\\p{L}])', 'iu');
+  'especial|document[aá]rio|filmes?|film|mesa-redonda|debate|entrevista|bate-papo|show|replay|highlights|redzone)(?![a-zà-ÿ])', 'i');
 
 export const norm = (s: string) => s.normalize('NFD').replace(/\p{M}+/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 const cleanTeam = (s: string) => s.replace(/\s*\([^)]*\)\s*$/, '').trim().replace(/^[-–:,\s]+|[-–:,\s]+$/g, '');

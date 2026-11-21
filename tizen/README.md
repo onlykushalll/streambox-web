@@ -13,12 +13,15 @@ O mesmo código do StreamBox Web, compilado à parte (`npm run build:tv` → `di
 das TVs de 2018–2020 (Chromium 56–69): JavaScript transpilado com polyfills e CSS convertido
 (`tv-postcss.js`). O site normal (`/`) não muda.
 
-| Ano da TV | Tizen | Navegador | Situação esperada (ainda não testado numa TV real) |
+| Ano da TV | Tizen | Navegador | Testado em Chromium da mesma versão (login, setas, OK, Voltar, digitação) |
 |---|---|---|---|
-| 2018 | 4.0 | Chromium 56 | funciona; sem CSS Grid, as grades viram uma coluna |
-| 2019 | 5.0 | Chromium 63 | completo |
-| 2020 | 5.5 | Chromium 69 | completo |
-| 2021+ | 6.0+ | Chromium 76+ | completo |
+| 2018 | 4.0 | Chromium 56 | funciona, sem erros; sem CSS Grid, as grades viram uma coluna |
+| 2019 | 5.0 | Chromium 63 | funciona, sem erros |
+| 2020 | 5.5 | Chromium 69 | funciona, sem erros |
+| 2021+ | 6.0+ | Chromium 76+ | deve funcionar (navegador mais novo) |
+
+Ainda **não foi testado numa TV Samsung de verdade** nem nas telas depois do login (Início, detalhes, player,
+TV ao vivo). Se você tem uma TV Samsung, veja como ajudar no fim deste arquivo.
 
 ## Gerar o pacote
 
@@ -51,3 +54,13 @@ Quem reinstalar por outro caminho precisa desinstalar antes: certificados difere
 - No login, prefira **Conexão rápida**: aparece um código na TV e a pessoa confirma pelo celular, sem digitar senha no controle.
 - Nos campos de texto, o teclado da TV só abre ao apertar **OK**; **Voltar** fecha o teclado.
 - **Voltar** na tela inicial fecha o app.
+
+## Ajude a testar
+
+Instale na sua TV e conte como foi numa [issue no GitHub](https://github.com/warlison-pec/streambox-web/issues),
+informando o **modelo e o ano da TV** (Configurações → Suporte → Sobre esta TV). O que mais importa:
+
+1. O app abre e o login funciona (usuário e senha ou **Conexão rápida**)?
+2. As setas andam pelas fileiras do Início, pelos detalhes e pelos menus sem "sumir" o foco?
+3. Filmes, episódios e canais ao vivo tocam? Play/Pause, avançar e voltar, Canal +/− e Voltar funcionam?
+4. Algo aparece quebrado, cortado ou lento? Uma foto da tela ajuda muito.

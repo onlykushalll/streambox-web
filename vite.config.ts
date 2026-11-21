@@ -1,7 +1,6 @@
 import { defineConfig, type Plugin as VitePlugin } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import legacy from '@vitejs/plugin-legacy';
-import flexGapPolyfill from 'flex-gap-polyfill';
 import { fileURLToPath } from 'node:url';
 import tvPostcss from './tv-postcss.js';
 
@@ -44,7 +43,7 @@ export default defineConfig(({ mode }) => {
       ...(tv ? [legacy({ targets: TV_TARGETS, renderModernChunks: false }), tvViewport()] : []),
     ],
     css: tv ? {
-      postcss: { plugins: [tvPostcss(), flexGapPolyfill({ only: true, flexGapNotSupported: '.no-flexgap' })] },
+      postcss: { plugins: [tvPostcss()] },
     } : undefined,
     build: tv
       ? { outDir: 'dist-tv', cssTarget: 'chrome56', chunkSizeWarningLimit: 1500 }

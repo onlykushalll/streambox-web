@@ -15,3 +15,7 @@ html.tv .chip:focus, html.tv .btn:focus { transform: scale(1.06); }
 /* Sem barras de rolagem: quem rola é o foco */
 html.tv ::-webkit-scrollbar { width: 0; height: 0; }
 html.tv body { overflow-x: hidden; }
+
+/* Navegador sem gap em flex: rótulo (texto) e campo dos formulários */
+html.no-flexgap .field > input, html.no-flexgap .field > select, html.no-flexgap .field > textarea { margin-top: 6px; }
+html.no-flexgap .brand > .logo { margin-right: 12px; }

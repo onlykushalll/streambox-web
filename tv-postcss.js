@@ -66,6 +66,32 @@ export default function tvPostcss() {
         }
         if (d.prop === 'width' && /^\d+px$/.test(d.value.trim())) width = parseFloat(d.value);
       });
+      // gap em flex (Chromium 84+): margens nos itens, só quando o navegador não tem (classe .no-flexgap, ver tv.ts)
+      let display = '', dir = '', wrap = false, gapRow = null, gapCol = null;
+      rule.each((d) => {
+        if (d.type !== 'decl' || d.__tv) return;
+        if (d.prop === 'display') display = d.value.trim();
+        if (d.prop === 'flex-direction') dir = d.value.trim();
+        if (d.prop === 'flex-flow') { dir = /column/.test(d.value) ? 'column' : dir; wrap = wrap || /\bwrap/.test(d.value); }
+        if (d.prop === 'flex-wrap') wrap = /^wrap/.test(d.value.trim());
+        if (d.prop === 'gap') { const [r, c] = d.value.trim().split(/\s+/); gapRow = r; gapCol = c || r; }
+        if (d.prop === 'row-gap') gapRow = d.value.trim();
+        if (d.prop === 'column-gap') gapCol = d.value.trim();
+      });
+      if (/^(inline-)?flex$/.test(display) && (gapRow || gapCol) && !rule.selector.startsWith('.no-flexgap')) {
+        const sel = (suffix) => rule.selector.split(',').map((x) => '.no-flexgap ' + x.trim() + suffix).join(',');
+        const ok = (v) => v && !/^0(px)?$/.test(v) && !/var\(|%/.test(v);
+        const column = /^column/.test(dir);
+        const add = (suffix, decls) => {
+          const r = new NewRule({ selector: sel(suffix) });
+          decls.forEach(([prop, value]) => r.append({ prop, value }));
+          if (decls.length) rule.after(r);
+        };
+        if (wrap) add(' > *', [ok(gapCol) && !column ? ['margin-right', gapCol] : null, ok(gapRow) ? ['margin-bottom', gapRow] : null].filter(Boolean));
+        else if (column) { if (ok(gapRow)) add(' > *:not(:last-child)', [['margin-bottom', gapRow]]); }
+        else if (ok(gapCol)) add(' > *:not(:last-child)', [['margin-right', gapCol]]);
+      }
+
       if (ratio && rule.parent && rule.parent.type !== 'atrule') {
         const sup = new AtRule({ name: 'supports', params: 'not (aspect-ratio: 1 / 1)' });
         if (width) {
