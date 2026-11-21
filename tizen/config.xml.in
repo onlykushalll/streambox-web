@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- App StreamBox para TV Samsung (Tizen 4.0+, TVs de 2018 em diante).
+     É um app leve: registra as teclas do controle e abre o StreamBox Web em modo TV (@URL@/tv/).
+     Gerado por build.sh a partir deste modelo. -->
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="@WIDGET_ID@" version="@VERSION@" viewmodes="maximized">
+    <tizen:application id="@PACKAGE@.StreamBox" package="@PACKAGE@" required_version="4.0"/>
+    <content src="index.html"/>
+    <feature name="http://tizen.org/feature/screen.size.all"/>
+    <icon src="icon.png"/>
+    <name>StreamBox</name>
+    <description>Filmes, séries e TV ao vivo do seu servidor Jellyfin.</description>
+    <tizen:profile name="tv-samsung"/>
+    <access origin="*" subdomains="true"/>
+    <tizen:allow-navigation>@HOST@</tizen:allow-navigation>
+    <tizen:privilege name="http://tizen.org/privilege/internet"/>
+    <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable"
+                   encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

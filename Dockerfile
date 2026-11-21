@@ -4,7 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run build
+RUN npm run build && npm run build:tv
 
 # --- servidor leve (nginx) ---
 FROM nginx:1.27-alpine
@@ -21,3 +21,4 @@ COPY docker/15-streambox-defaults.envsh /docker-entrypoint.d/15-streambox-defaul
 COPY docker/40-streambox-config.sh /docker-entrypoint.d/40-streambox-config.sh
 RUN chmod +x /docker-entrypoint.d/*.sh /docker-entrypoint.d/*.envsh
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist-tv /usr/share/nginx/html/tv

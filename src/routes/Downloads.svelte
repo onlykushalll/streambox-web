@@ -29,7 +29,7 @@
   const icon = (e: Entry) => (e.type === 'directory' ? 'folder' : ext(e.name) === 'apk' ? 'android' : 'file');
   const kind = (e: Entry) => {
     const x = ext(e.name);
-    return x === 'apk' ? 'App Android (celular e TV box)' : x === 'exe' || x === 'msi' ? 'Programa para Windows'
+    return x === 'apk' ? 'App Android (celular e TV box)' : x === 'wgt' ? 'App para TV Samsung (instale pelo computador)' : x === 'exe' || x === 'msi' ? 'Programa para Windows'
       : x === 'zip' || x === '7z' || x === 'rar' ? 'Arquivo compactado' : x === 'pdf' ? 'Documento PDF' : x ? x.toUpperCase() : 'Arquivo';
   };
   const size = (b = 0) => (b >= 1 << 30 ? (b / (1 << 30)).toFixed(1) + ' GB' : b >= 1 << 20 ? (b / (1 << 20)).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB');

@@ -6,14 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:tv": "vite build --mode tv",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@juggle/resize-observer": "^3.4.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tsconfig/svelte": "^5.0.8",
+    "@vitejs/plugin-legacy": "^8.2.4",
+    "flex-gap-polyfill": "^5.0.0",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",
+    "terser": "^5.51.4",
     "typescript": "^5.9.3",
     "vite": "^8.3.5"
   },

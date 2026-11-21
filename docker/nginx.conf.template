@@ -11,6 +11,12 @@ server {
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml application/manifest+json;
 
+    # Versão para TV (Samsung 2018+ e outras): mesmo site, compilado para navegador antigo, em modo controle remoto
+    location = /tv { absolute_redirect off; return 302 /tv/; }
+    location = /tv/config.js { alias /usr/share/nginx/html/config.js; add_header Cache-Control "no-cache"; }
+    location /tv/assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; try_files $uri =404; }
+    location /tv/ { add_header Cache-Control "no-cache"; try_files $uri /tv/index.html; }
+
     # Página (SPA)
     location = /config.js { add_header Cache-Control "no-cache"; }
     location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; try_files $uri =404; }

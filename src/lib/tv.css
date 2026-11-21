@@ -1,0 +1,17 @@
+/* Modo TV: só vale com <html class="tv"> (app da TV ou navegador de TV). */
+
+/* Foco bem visível de longe (o navegador da TV não conhece :focus-visible) */
+html.tv :focus { outline: 4px solid var(--orange); outline-offset: 3px; border-radius: 12px; }
+html.tv input:focus, html.tv select:focus, html.tv textarea:focus { outline-offset: 0; }
+
+/* Cartões crescem um pouco com o foco, como no app Android da TV */
+html.tv a:focus, html.tv button:focus, html.tv [role=button]:focus, html.tv [tabindex]:focus {
+  position: relative; z-index: 2;
+  transform: scale(1.04);
+  transition: transform .15s ease-out;
+}
+html.tv .chip:focus, html.tv .btn:focus { transform: scale(1.06); }
+
+/* Sem barras de rolagem: quem rola é o foco */
+html.tv ::-webkit-scrollbar { width: 0; height: 0; }
+html.tv body { overflow-x: hidden; }

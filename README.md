@@ -23,6 +23,7 @@ Os usuários entram com a conta do **Jellyfin** e o Jellyfin fica escondido atr�
   - **Seerr** (opcional)
 - Protetor de tela com pôsteres do catálogo quando nada está tocando
 - Funciona no computador, no celular e no tablet; dá para instalar como app (PWA)
+- **TV Samsung (Tizen, 2018+)**: versão em modo controle remoto em `/tv/` e app para instalar na TV. Veja [`tizen/README.md`](tizen/README.md)
 
 ## Novidades da v1.9
 
