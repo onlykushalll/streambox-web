@@ -2,7 +2,7 @@
   // Aba "Eventos esportivos" da TV ao vivo: jogos e transmissões dos canais de esporte, tirados do EPG do Jellyfin.
   import { untrack } from 'svelte';
   import { url, authHeader, img, friendly } from '../api/jellyfin';
-  import { session } from '../session.svelte';
+  import { CONFIG, session } from '../session.svelte';
   import { go } from '../router.svelte';
   import type { Item, ItemsResult } from '../types';
   import { hhmm } from '../util';
@@ -104,9 +104,14 @@
     go(`/live/jf/${ch.jfId}?name=${encodeURIComponent(ch.name)}`);
   }
 
-  // escudos: começa pelo que já está guardado e procura o resto aos poucos
+  // Escudos: com o STRM Indexer vêm do repositório do servidor (prontos em disco, um só download para todos).
+  // Sem ele, o navegador procura no TheSportsDB aos poucos.
+  const server = !!CONFIG.indexer;
+  const serverBadge = (t: string) => `${CONFIG.indexer}/badge?team=${encodeURIComponent(t)}`;
+  let loadedOk = $state<Record<string, boolean>>({});
   let badges = $state<Record<string, string | null>>({});
   $effect(() => {
+    if (server) return;
     const teams = [...new Set(shown.slice(0, 120).flatMap((e) => (e.home && e.away ? [e.home, e.away] : [])))];
     let alive = true;
     const next: Record<string, string | null> = {};
@@ -133,10 +138,14 @@
 </script>
 
 {#snippet team(name: string)}
-  {@const b = badges[norm(name)]}
+  {@const b = server ? serverBadge(name) : badges[norm(name)]}
+  {@const k = norm(name)}
   <span class="team">
-    {#if b}<img class="crest" src={b} alt="" loading="lazy" referrerpolicy="no-referrer" />
-    {:else}<span class="crest ini" style={`background:${color(name)}`}>{initials(name)}</span>{/if}
+    <span class="crestbox">
+      {#if !loadedOk[k]}<span class="crest ini" style={`background:${color(name)}`}>{initials(name)}</span>{/if}
+      {#if b}<img class="crest" class:hidden={!loadedOk[k]} src={b} alt="" loading="lazy" referrerpolicy="no-referrer"
+        onload={() => (loadedOk[k] = true)} onerror={() => (loadedOk[k] = false)} />{/if}
+    </span>
     <b>{name}</b>
   </span>
 {/snippet}
@@ -151,6 +160,7 @@
     <button class="chip" class:on={onlyMatches} onclick={() => (onlyMatches = true)}>Só jogos</button>
     <button class="chip" class:on={replays} onclick={() => (replays = !replays)}>{replays ? 'Reprises: mostrando' : 'Reprises: ocultas'}</button>
   </div>
+  {#if server}<p class="credit">Escudos: <a href="https://football-logos.cc" target="_blank" rel="noopener">football-logos.cc</a></p>{/if}
   {#if error}<p class="bad">{error}</p>{/if}
   {#if !shown.length}<p class="muted">Nenhum evento nos próximos dias{q ? ` para "${filter}"` : ''}.</p>{/if}
   {#each sections as [label, list] (label)}
@@ -207,7 +217,10 @@
   .match{display:flex;align-items:center}
   .team{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
   .team b{font-size:14px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .crest{width:60px;height:60px;object-fit:contain}
+  .crestbox{position:relative;width:60px;height:60px}
+  .crest{position:absolute;inset:0;width:60px;height:60px;object-fit:contain}
+  .crest.hidden{opacity:0}
+  .credit{font-size:12px;color:var(--muted);margin:2px 0 0} .credit a{color:inherit}
   .ini{border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px}
   .vs{color:var(--orange);font-weight:800;font-size:22px;padding:0 6px}
   .solo{display:flex;gap:12px;align-items:center}
