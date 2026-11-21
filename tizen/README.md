@@ -13,15 +13,18 @@ O mesmo código do StreamBox Web, compilado à parte (`npm run build:tv` → `di
 das TVs de 2018–2020 (Chromium 56–69): JavaScript transpilado com polyfills e CSS convertido
 (`tv-postcss.js`). O site normal (`/`) não muda.
 
-| Ano da TV | Tizen | Navegador | Testado em Chromium da mesma versão (login, setas, OK, Voltar, digitação) |
+| Ano da TV | Tizen | Navegador | Testado em Chromium da mesma versão |
 |---|---|---|---|
-| 2018 | 4.0 | Chromium 56 | funciona, sem erros; sem CSS Grid, as grades viram uma coluna |
+| 2018 | 4.0 | Chromium 56 | funciona, sem erros (grades convertidas para flex) |
 | 2019 | 5.0 | Chromium 63 | funciona, sem erros |
 | 2020 | 5.5 | Chromium 69 | funciona, sem erros |
 | 2021+ | 6.0+ | Chromium 76+ | deve funcionar (navegador mais novo) |
 
-Ainda **não foi testado numa TV Samsung de verdade** nem nas telas depois do login (Início, detalhes, player,
-TV ao vivo). Se você tem uma TV Samsung, veja como ajudar no fim deste arquivo.
+Roteiro testado só com o teclado, como no controle: login, Início (destaque e fileiras), menu lateral, Filmes,
+detalhes, player (abre e Voltar sai), TV ao vivo e Eventos esportivos.
+
+**Falta testar numa TV de verdade**, principalmente se os vídeos e canais **tocam**: os Chromium de teste não têm
+o decodificador H.264, então ali o player abre mas o vídeo não roda. Se você tem uma TV Samsung, veja como ajudar no fim deste arquivo.
 
 ## Gerar o pacote
 

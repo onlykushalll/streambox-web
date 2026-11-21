@@ -92,6 +92,45 @@ export default function tvPostcss() {
         else if (ok(gapCol)) add(' > *:not(:last-child)', [['margin-right', gapCol]]);
       }
 
+      // CSS Grid não existe no Chromium 56 (TVs 2018): só nesses navegadores, a grade vira flex
+      let grid = false, flow = '', cols = '', placeCenter = false, gGap = null;
+      rule.each((d) => {
+        if (d.type !== 'decl' || d.__tv) return;
+        if (d.prop === 'display' && /^(inline-)?grid$/.test(d.value.trim())) grid = true;
+        if (d.prop === 'grid-auto-flow') flow = d.value.trim();
+        if (d.prop === 'grid-template-columns') cols = d.value.trim();
+        if (d.prop === 'place-items' && /^center/.test(d.value.trim())) placeCenter = true;
+        if (d.prop === 'gap' || d.prop === 'grid-gap') gGap = d.value.trim().split(/\s+/);
+      });
+      if (grid && !rule.selector.startsWith('.no-flexgap') && rule.parent && rule.parent.type !== 'atrule') {
+        const sup = new AtRule({ name: 'supports', params: 'not (display: grid)' });
+        const kids = rule.selector.split(',').map((x) => x.trim() + ' > *').join(',');
+        const g = (i) => (gGap && gGap[i] !== undefined ? gGap[i] : gGap ? gGap[0] : null);
+        const okv = (v) => v && !/var\(|%/.test(v) && !/^0(px)?$/.test(v);
+        const main = new NewRule({ selector: rule.selector });
+        const child = new NewRule({ selector: kids });
+        if (/column/.test(flow)) {
+          main.append({ prop: 'display', value: 'flex' }, { prop: 'flex-wrap', value: 'nowrap' });
+          child.append({ prop: 'flex', value: 'none' });
+          if (okv(g(1))) child.append({ prop: 'margin-right', value: g(1) });
+        } else if (placeCenter && !cols) {
+          main.append({ prop: 'display', value: 'flex' }, { prop: 'align-items', value: 'center' }, { prop: 'justify-content', value: 'center' });
+        } else {
+          main.append({ prop: 'display', value: 'flex' }, { prop: 'flex-wrap', value: 'wrap' });
+          const mm = /minmax\(\s*([\d.]+px)/.exec(cols);
+          const rep = /repeat\(\s*(\d+)\s*,/.exec(cols);
+          if (mm) child.append({ prop: 'flex', value: `1 1 ${mm[1]}` });
+          else if (rep) child.append({ prop: 'width', value: `calc(${(100 / Number(rep[1])).toFixed(3)}% - ${okv(g(1)) ? g(1) : '0px'})` });
+          else if (cols) child.append({ prop: 'flex', value: '1 1 0' });
+          else child.append({ prop: 'width', value: '100%' });
+          if (okv(g(1)) && (mm || rep)) child.append({ prop: 'margin-right', value: g(1) });
+          if (okv(g(0))) child.append({ prop: 'margin-bottom', value: g(0) });
+        }
+        sup.append(main);
+        if (child.nodes.length) sup.append(child);
+        rule.after(sup);
+      }
+
       if (ratio && rule.parent && rule.parent.type !== 'atrule') {
         const sup = new AtRule({ name: 'supports', params: 'not (aspect-ratio: 1 / 1)' });
         if (width) {

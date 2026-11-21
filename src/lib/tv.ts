@@ -53,7 +53,11 @@ function shown(el: Element): boolean {
 }
 
 function candidates(scope: ParentNode = document): HTMLElement[] {
-  return (Array.from(scope.querySelectorAll(FOCUSABLE)) as HTMLElement[]).filter(shown);
+  // Alvos minúsculos (as bolinhas do carrossel) ficam fora: na TV atrapalham mais do que ajudam
+  return (Array.from(scope.querySelectorAll(FOCUSABLE)) as HTMLElement[]).filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width >= 12 && r.height >= 12 && shown(el);
+  });
 }
 
 const isText = (el: Element | null): el is HTMLInputElement | HTMLTextAreaElement =>
@@ -78,10 +82,12 @@ function nearest(from: DOMRect, dir: Dir, list: HTMLElement[], current: Element 
     if (el === current || el.contains(current)) continue;
     const r = el.getBoundingClientRect();
     let gap: number, side: number;
-    if (dir === 'right') { if (r.left < from.right - 4 && r.left + r.width / 2 <= cx) continue; gap = Math.max(0, r.left - from.right); side = Math.max(0, r.top - from.bottom, from.top - r.bottom); }
-    else if (dir === 'left') { if (r.right > from.left + 4 && r.left + r.width / 2 >= cx) continue; gap = Math.max(0, from.left - r.right); side = Math.max(0, r.top - from.bottom, from.top - r.bottom); }
-    else if (dir === 'down') { if (r.top < from.bottom - 4 && r.top + r.height / 2 <= cy) continue; gap = Math.max(0, r.top - from.bottom); side = Math.max(0, r.left - from.right, from.left - r.right); }
-    else { if (r.bottom > from.top + 4 && r.top + r.height / 2 >= cy) continue; gap = Math.max(0, from.top - r.bottom); side = Math.max(0, r.left - from.right, from.left - r.right); }
+    // Está mesmo naquela direção? (com folga: o item focado cresce um pouco com o zoom do foco)
+    const mx = r.left + r.width / 2, my = r.top + r.height / 2;
+    if (dir === 'right') { if (!(r.left >= from.right - 4 || (mx > cx + 8 && r.right > from.right + 4))) continue; gap = Math.max(0, r.left - from.right); side = Math.max(0, r.top - from.bottom, from.top - r.bottom); }
+    else if (dir === 'left') { if (!(r.right <= from.left + 4 || (mx < cx - 8 && r.left < from.left - 4))) continue; gap = Math.max(0, from.left - r.right); side = Math.max(0, r.top - from.bottom, from.top - r.bottom); }
+    else if (dir === 'down') { if (!(r.top >= from.bottom - 4 || (my > cy + 8 && r.bottom > from.bottom + 4))) continue; gap = Math.max(0, r.top - from.bottom); side = Math.max(0, r.left - from.right, from.left - r.right); }
+    else { if (!(r.bottom <= from.top + 4 || (my < cy - 8 && r.top < from.top - 4))) continue; gap = Math.max(0, from.top - r.bottom); side = Math.max(0, r.left - from.right, from.left - r.right); }
     // alinhado no outro eixo pesa muito mais (fileiras e colunas)
     const score = gap + side * 3 + (side > 0 ? 400 : 0);
     if (score < bestScore) { bestScore = score; best = el; }
@@ -213,4 +219,11 @@ export function initTv() {
   });
   addEventListener('hashchange', focusOnRoute);
   focusOnRoute();
+  // Sem nada focado (depois do login, de fechar um menu…): o foco volta para o começo da tela
+  setInterval(() => {
+    const a = document.activeElement;
+    if (inPlayer() || document.hidden || (a && a !== document.body && shown(a))) return;
+    const f = firstInMain();
+    if (f && (f.closest('main') || f.closest(POPUP))) focusEl(f);   // espera o conteúdo carregar (não cai no menu)
+  }, 1000);
 }
