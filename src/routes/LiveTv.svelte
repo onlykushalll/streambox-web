@@ -9,6 +9,7 @@
   import { classify, genreOptions } from '../lib/channelGenres';
   import FilterBar from '../lib/components/FilterBar.svelte';
   import FilterMenu from '../lib/components/FilterMenu.svelte';
+  import SportsEvents from '../lib/components/SportsEvents.svelte';
 
   // Abre o canal levando a lista visível junto (o player troca de canal sem voltar aqui)
   function openJf(ch: Item) {
@@ -33,7 +34,7 @@
     go(routeOf(last));
   }
 
-  let tab = $state<'jf' | 'm3u'>('jf');
+  let tab = $state<'jf' | 'm3u' | 'events'>('jf');
   let filter = $state('');
   let group = $state('');
   let genre = $state('');
@@ -80,12 +81,15 @@
     <div class="chips">
       <button class="chip" class:on={tab === 'jf'} onclick={() => { tab = 'jf'; genre = ''; group = ''; }}>Jellyfin</button>
       <button class="chip" class:on={tab === 'm3u'} onclick={() => { tab = 'm3u'; genre = ''; group = ''; }}>Minha lista</button>
+      <button class="chip" class:on={tab === 'events'} onclick={() => { tab = 'events'; genre = ''; group = ''; }}>Eventos esportivos</button>
       {#if last}<button class="chip lastch" onclick={openLast}>▶ Último canal: {last.name}</button>{/if}
     </div>
-    <input class="input" placeholder="Filtrar canais…" bind:value={filter} />
+    <input class="input" placeholder={tab === 'events' ? 'Filtrar eventos, times ou canais…' : 'Filtrar canais…'} bind:value={filter} />
   </div>
 
-  {#if tab === 'jf'}
+  {#if tab === 'events'}
+    <SportsEvents channels={jfList} {filter} />
+  {:else if tab === 'jf'}
     {#if jfList === null}<div class="center"><div class="spinner"></div></div>
     {:else if !jfList.length}<p class="muted">{jfError ? 'TV ao vivo do Jellyfin indisponível: ' + jfError : 'Nenhum canal configurado no Jellyfin (Painel → TV ao vivo).'}</p>
     {:else}
