@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Nav from './lib/components/Nav.svelte';
   import Toasts from './lib/components/Toasts.svelte';
+  import NoticeCards from './lib/components/NoticeCards.svelte';
+  import { notices } from './lib/notices.svelte';
   import ScreenSaver from './lib/components/ScreenSaver.svelte';
   import Login from './routes/Login.svelte';
   import Home from './routes/Home.svelte';
@@ -23,11 +26,26 @@
     jf.views().then((v) => (libs = v.filter((x) => itemTypesFor(x.CollectionType)))).catch(() => {});
   });
 
+  // Avisos (mensagens do servidor, novidades e pedidos) enquanto estiver logado
+  $effect(() => {
+    if (!session.loggedIn) { notices.stop(); return; }
+    session.userId;
+    untrack(() => notices.start());
+    return () => notices.stop();
+  });
+
   // Rotas do player ficam por cima das telas
   const playMatch = $derived(router.match('/play/:id'));
   const liveJf = $derived(router.match('/live/jf/:id'));
   const liveM3u = $derived(router.path === '/live/m3u');
   const inPlayer = $derived(!!playMatch || !!liveJf || liveM3u);
+  // Em tela cheia só o player aparece: ele mostra os avisos por conta própria
+  let fsPlayer = $state(false);
+  $effect(() => {
+    const on = () => (fsPlayer = !!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  });
 
   const page = $derived.by(() => {
     const p = router.path;
@@ -96,6 +114,7 @@
   {#if idle.active && !inPlayer}<ScreenSaver onclose={() => { idle.active = false; idle.touch(); }} />{/if}
 {/if}
 <Toasts />
+{#if session.loggedIn && !fsPlayer}<NoticeCards />{/if}
 
 <style>
   .main{margin-left:var(--rail);min-height:100vh;padding-bottom:20px}

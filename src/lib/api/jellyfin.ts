@@ -23,6 +23,19 @@ export function url(path: string, query: Record<string, unknown> = {}) {
   return CONFIG.jellyfin + path + (s ? '?' + s : '');
 }
 
+/** Para comparar títulos: sem acento, sem pontuação e em minúsculas. */
+export const normalizeTitle = (t: string) => t.normalize('NFD').replace(/[^\p{L}\p{Nd}]/gu, '').toLowerCase();
+
+/** Endereço do WebSocket do Jellyfin (mensagens do painel, biblioteca alterada). */
+export function socketUrl() {
+  const base = new URL(CONFIG.jellyfin + '/socket', location.href);
+  base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
+  base.searchParams.set('ApiKey', session.token);      // Jellyfin 12
+  base.searchParams.set('api_key', session.token);     // 10.x
+  base.searchParams.set('deviceId', session.deviceId);
+  return base.toString();
+}
+
 export function friendly(e: unknown): string {
   if (e instanceof ApiError) return e.message;
   if (e instanceof TypeError) return 'Não foi possível conectar ao servidor.';
@@ -155,6 +168,38 @@ export const jf = {
   search: async (searchTerm: string) => (await items('/Items', {
     userId: uid(), searchTerm, recursive: true, includeItemTypes: 'Movie,Series', limit: 40, fields: FIELDS,
   })).Items,
+  /* recomendações e novidades (mesmas chamadas do app Android) */
+  /** Filmes e episódios já assistidos, do mais recente para o mais antigo. */
+  recentlyPlayed: async (limit = 40) => (await items('/Items', {
+    userId: uid(), recursive: true, includeItemTypes: 'Movie,Episode', filters: 'IsPlayed', sortBy: 'DatePlayed',
+    sortOrder: 'Descending', limit, fields: 'Genres', enableTotalRecordCount: false, enableImages: false,
+  })).Items,
+  /** Títulos parecidos segundo o Jellyfin (gêneros, tags, estúdios e elenco). */
+  similar: async (id: string, limit = 24) => (await items(`/Items/${id}/Similar`, { userId: uid(), limit, fields: FIELDS })).Items,
+  /** Títulos ainda não vistos com algum destes gêneros. */
+  byGenres: async (genres: string[], types: string, limit = 24) => (await items('/Items', {
+    userId: uid(), recursive: true, includeItemTypes: types, genres: genres.join('|'), isPlayed: false, sortBy: 'Random',
+    limit, fields: FIELDS, enableTotalRecordCount: false,
+  })).Items,
+  /** Procura um filme/série pelo nome (para saber se um pedido já chegou). */
+  async findTitle(title: string, kind: 'movie' | 'series', year?: number | null): Promise<Item | null> {
+    const wanted = normalizeTitle(title);
+    const list = (await items('/Items', {
+      userId: uid(), searchTerm: title, recursive: true, includeItemTypes: kind === 'series' ? 'Series' : 'Movie', limit: 20, fields: FIELDS,
+    })).Items.filter((i) => normalizeTitle(i.Name) === wanted);
+    const dist = (i: Item) => (year == null || i.ProductionYear == null ? 1 : Math.abs(i.ProductionYear - year) * 2);
+    const best = list.sort((a, b) => dist(a) - dist(b))[0];
+    return best && (year == null || best.ProductionYear == null || Math.abs(best.ProductionYear - year) <= 1) ? best : null;
+  },
+  /** Filmes e episódios mais recentes do catálogo (para avisar o que chegou). */
+  recentlyAdded: async (limit = 100) => (await items('/Items', {
+    userId: uid(), recursive: true, includeItemTypes: 'Movie,Episode', sortBy: 'DateCreated', sortOrder: 'Descending', limit,
+    fields: 'DateCreated,ProviderIds,ParentId', enableTotalRecordCount: false,
+  })).Items,
+  /** Anuncia ao servidor que esta sessão aceita "Enviar mensagem" do painel. */
+  reportCapabilities: () => call<void>('/Sessions/Capabilities/Full', { method: 'POST', body: {
+    PlayableMediaTypes: ['Video'], SupportedCommands: ['DisplayMessage'], SupportsMediaControl: true, SupportsPersistentIdentifier: true,
+  } }),
   liveChannels: async () => (await items('/LiveTv/Channels', { userId: uid(), addCurrentProgram: true, enableImages: true, limit: 1000 })).Items,
 
   /* reprodução */

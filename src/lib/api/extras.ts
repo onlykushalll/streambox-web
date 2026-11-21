@@ -1,6 +1,6 @@
 // STRM Indexer (solicitações, TV ao vivo da lista M3U) e Seerr/Jellyseerr.
 import { CONFIG, session } from '../session.svelte';
-import type { IndexerItem, LiveChannel, RequestStatus, SeerrResult } from '../types';
+import type { IndexerItem, IndexerRequest, LiveChannel, RequestStatus, SeerrResult } from '../types';
 import { ApiError } from './jellyfin';
 
 async function json<T>(res: Response): Promise<T> {
@@ -23,6 +23,8 @@ export const indexer = {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ kind: item.kind, title: item.title, year: item.kind === 'movie' ? item.catalog_year ?? undefined : undefined, season: season ?? undefined }),
   })),
+  /** Pedidos deste usuário do Jellyfin (de qualquer aparelho), mais recentes primeiro. */
+  mine: async () => (await json<{ items: IndexerRequest[] }>(await ix('/mine'))).items ?? [],
   status: async (id: string) => json<RequestStatus>(await ix('/status?id=' + id)),
   art: (p?: string | null) => (p ? `${CONFIG.indexer}/${p}` : null),
 
@@ -71,5 +73,24 @@ export const seerr = {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mediaType: item.mediaType, mediaId: item.id, ...(item.mediaType === 'tv' ? { seasons: seasons ?? 'all' } : {}) }),
   })),
+  /** Só dá para saber quem pediu quando o login é com a conta do Jellyfin (com a chave, tudo sai como administrador). */
+  identifiesUser: () => !!CONFIG.seerr && !!session.settings.seerrUser && !session.settings.seerrKey,
+  /** Pedidos deste usuário no Seerr (mais recentes primeiro). */
+  myRequests: async (take = 100): Promise<SeerrRequest[]> => {
+    if (!seerr.identifiesUser()) return [];
+    const me = await json<{ id: number }>(await sr('/auth/me'));
+    const r = await json<{ results: SeerrRequest[] }>(await sr(`/request?take=${take}&sort=added&requestedBy=${me.id}`));
+    return r.results.filter((x) => x.requestedBy?.id === me.id);
+  },
+  details: async (type: 'movie' | 'tv', tmdbId: number) => json<SeerrResult>(await sr(`/${type}/${tmdbId}?language=pt-BR`)),
   poster: (r: SeerrResult) => (r.posterPath ? `https://image.tmdb.org/t/p/w342${r.posterPath}` : null),
 };
+
+export interface SeerrRequest {
+  id: number;
+  status: number;                 // 1 pendente, 2 aprovado, 3 recusado
+  type?: 'movie' | 'tv';
+  createdAt?: string;
+  requestedBy?: { id: number };
+  media?: { tmdbId?: number; mediaType?: string; status?: number; jellyfinMediaId?: string | null };
+}

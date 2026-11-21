@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import NoticeBell from './NoticeBell.svelte';
   import { router } from '../router.svelte';
   import type { Item } from '../types';
   let { libs }: { libs: Item[] } = $props();
@@ -21,10 +22,12 @@
   {/each}
   <a href="#/live" class:on={active('#/live')}><Icon name="live" /><small>TV ao vivo</small></a>
   <a href="#/search" class:on={active('#/search')}><Icon name="search" /><small>Buscar</small></a>
+  <NoticeBell />
   <a href="#/settings" class:on={active('#/settings')}><Icon name="settings" /><small>Ajustes</small></a>
 </nav>
 
 <!-- Barra inferior (celular) -->
+<NoticeBell variant="fab" />
 <nav class="bar">
   <a href="#/" class:on={active('#/')}><Icon name="home" /><small>Início</small></a>
   <a href="#/libs" class:on={active('#/libs') || active('#/lib/')}><Icon name="library" /><small>Bibliotecas</small></a>

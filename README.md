@@ -6,12 +6,14 @@ Os usuários entram com a conta do **Jellyfin** e o Jellyfin fica escondido atr�
 ## O que tem
 
 - Login com usuário e senha ou **Conexão rápida** (Quick Connect)
-- Início com destaque em carrossel, Continuar assistindo, Próximos episódios e "Adicionados" por biblioteca
+- Início com destaque em carrossel, Continuar assistindo, Próximos episódios, **Para você que assistiu…**, **Seu pedido chegou** e "Adicionados" por biblioteca
 - Todas as bibliotecas, coleções, detalhes de filmes e séries com temporadas
 - Player com:
   - legendas (inclusive busca e download online) e personalização de tamanho, cor e fundo
   - troca de áudio e de qualidade (HLS)
   - atalhos de teclado e progresso salvo no Jellyfin
+  - aviso quando o formato não roda direto no navegador (o servidor converte), com sugestão do app Android/computador para assistir na qualidade original
+- **Avisos**: mensagens do painel do Jellyfin, novidades do catálogo e "Seu pedido chegou", com histórico no sino e notificação do navegador (opcional)
 - **TV ao vivo**:
   - canais do Jellyfin
   - uma **lista M3U/EPG própria**, repassada pelo STRM Indexer (sem CORS e sem conteúdo misto)
@@ -21,6 +23,43 @@ Os usuários entram com a conta do **Jellyfin** e o Jellyfin fica escondido atr�
   - **Seerr** (opcional)
 - Protetor de tela com pôsteres do catálogo quando nada está tocando
 - Funciona no computador, no celular e no tablet; dá para instalar como app (PWA)
+
+## Novidades da v1.9
+
+### Player: formatos que o navegador não toca
+- Quando o servidor precisa converter o vídeo (ou só o áudio), o player avisa **"Convertendo no servidor…"** em vez de ficar só carregando.
+- Junto aparece um cartão sugerindo o **app StreamBox** (Android ou computador, conforme o aparelho), onde o vídeo toca **na qualidade original, sem conversão e sem espera**. Os botões são **Baixar o app** (abre os Downloads numa aba nova, sem parar o vídeo), **Agora não** e **Não mostrar mais**.
+- Quando o vídeo começa a tocar, o cartão vira uma faixa pequena no topo e some sozinho depois de 12 s.
+- Se o arquivo original passar de 12 s carregando, aparece **"Está demorando para abrir?"** com o botão **Converter no servidor**.
+- O jeito de tocar não mudou. Se a pessoa escolher uma qualidade menor de propósito, a sugestão do app não aparece.
+
+### Tela inicial (como no app Android)
+- **Para você que assistiu X**: títulos parecidos com o que a pessoa viu por último. Quando vêm poucos, completa com títulos do mesmo gênero. São até 2 fileiras, e só aparecem quando já há histórico.
+- **Seu pedido chegou**: pedidos que já estão no catálogo. Junta os pedidos feitos na busca deste navegador com os que o STRM Indexer e o Seerr conhecem de outros aparelhos.
+- As duas fileiras carregam depois do resto, então a tela inicial não fica mais lenta.
+- **Destaque que encolhe ao rolar** (só em telas largas, como o PC): ao rolar as fileiras para baixo, o banner de cima vira uma faixa baixa com só o nome e as informações do título em foco, e as fileiras passam a ocupar quase a tela toda. Ao voltar ao topo, o banner abre de novo com a sinopse e os botões. No celular continua o carrossel normal.
+
+### Avisos
+- **Mensagens do painel do Jellyfin** em tempo real. Para enviar uma: Painel → Sessões → sessão "StreamBox Web" → Enviar mensagem.
+- **Novidades do catálogo** e **Seu pedido chegou**: confere a cada 15 min e também quando a biblioteca muda.
+- **Onde aparecem**:
+  - um cartão no canto da tela, que também aparece dentro do player em tela cheia;
+  - o **sino** com o histórico (no menu lateral; no celular, um botão flutuante no canto);
+  - **notificação do navegador**, se a pessoa permitir. Ela só aparece com a aba em segundo plano ou o vídeo em tela cheia.
+- Em **Ajustes**, as seções novas **Avisos** (cada tipo liga e desliga) e **Player** (mostrar ou não a sugestão do app).
+
+### Limitações
+- Os pedidos do Seerr feitos em outros aparelhos só aparecem com login pela **conta do Jellyfin**. Com a chave de API, todo pedido sai como administrador.
+- Os avisos só chegam com o site aberto. Não há push em segundo plano com o navegador fechado.
+- A fileira "Seu pedido chegou" usa o endpoint `/mine` do STRM Indexer. Indexador sem esse endpoint mostra só os pedidos feitos neste navegador.
+
+### Atualizar a partir da v1.8
+```bash
+cd /mnt/sdb1/streambox-web/streambox-web
+unzip -o ../streambox-web-v1.9-patch.zip
+docker compose up -d --build
+```
+Depois, recarregue o site com Ctrl+F5.
 
 ## Como funciona
 

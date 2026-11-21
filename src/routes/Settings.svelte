@@ -4,6 +4,7 @@
   import { friendly } from '../lib/api/jellyfin';
   import { toast } from '../lib/toast.svelte';
   import { idle } from '../lib/idle.svelte';
+  import { notices } from '../lib/notices.svelte';
 
   const S = session.settings;
   let m3u = $state(S.m3u);
@@ -36,6 +37,10 @@
       session.set('seerrUser', '');
       seerrMsg = 'Falha: ' + friendly(e);
     } finally { seerrBusy = false; }
+  }
+  async function enableBrowserNotices() {
+    if (await notices.askPermission()) { session.set('notifyBrowser', true); toast.show('Notificações ligadas', 'ok'); }
+    else toast.show('O navegador não permitiu as notificações.', 'bad');
   }
   function disconnectSeerr() { seerr.logout(); session.set('seerrKey', ''); session.set('seerrUser', ''); seerrMsg = 'Desconectado.'; }
 </script>
@@ -79,6 +84,42 @@
     <div class="chips">
       <button class="chip" class:on={S.hideWatched} onclick={() => session.set('hideWatched', true)}>Ligado</button>
       <button class="chip" class:on={!S.hideWatched} onclick={() => session.set('hideWatched', false)}>Desligado</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Avisos</h2>
+    <p class="muted">Enquanto o {CONFIG.title} estiver aberto: mensagens do servidor, novidades do catálogo e quando um pedido seu chegar.</p>
+    <span class="lbl">Novidades do catálogo</span>
+    <div class="chips">
+      <button class="chip" class:on={S.noticeNew} onclick={() => session.set('noticeNew', true)}>Ligado</button>
+      <button class="chip" class:on={!S.noticeNew} onclick={() => session.set('noticeNew', false)}>Desligado</button>
+    </div>
+    <span class="lbl">Seu pedido chegou</span>
+    <div class="chips">
+      <button class="chip" class:on={S.noticeRequested} onclick={() => session.set('noticeRequested', true)}>Ligado</button>
+      <button class="chip" class:on={!S.noticeRequested} onclick={() => session.set('noticeRequested', false)}>Desligado</button>
+    </div>
+    <span class="lbl">Notificações do navegador</span>
+    {#if notices.permission === 'unsupported'}
+      <p class="note">Este navegador não oferece notificações.</p>
+    {:else if notices.permission === 'denied'}
+      <p class="note">As notificações foram bloqueadas. Libere nas configurações do site (cadeado ao lado do endereço).</p>
+    {:else}
+      <p class="note">Avisa mesmo com a aba em segundo plano ou com o vídeo em tela cheia.</p>
+      <div class="chips">
+        <button class="chip" class:on={S.notifyBrowser && notices.permission === 'granted'} onclick={enableBrowserNotices}>Ligado</button>
+        <button class="chip" class:on={!S.notifyBrowser || notices.permission !== 'granted'} onclick={() => session.set('notifyBrowser', false)}>Desligado</button>
+      </div>
+    {/if}
+  </section>
+
+  <section>
+    <h2>Player</h2>
+    <p class="muted">Quando o navegador não toca um formato direto, o servidor converte o vídeo. Mostrar a sugestão de usar o app (qualidade original, sem conversão)?</p>
+    <div class="chips">
+      <button class="chip" class:on={S.appHint} onclick={() => session.set('appHint', true)}>Mostrar</button>
+      <button class="chip" class:on={!S.appHint} onclick={() => session.set('appHint', false)}>Não mostrar</button>
     </div>
   </section>
 

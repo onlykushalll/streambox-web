@@ -2,6 +2,7 @@
   import Hls from 'hls.js';
   import { untrack } from 'svelte';
   import Icon from '../lib/components/Icon.svelte';
+  import NoticeCards from '../lib/components/NoticeCards.svelte';
   import { jf, img, media, friendly, episodeLabel, authHeader } from '../lib/api/jellyfin';
   import { indexer } from '../lib/api/extras';
   import { session, QUALITIES, SUB_SIZES, SUB_COLORS, SUB_BGS, CONFIG } from '../lib/session.svelte';
@@ -84,6 +85,42 @@
     const same = episodes.filter((e) => e.SeasonId === item!.SeasonId);
     return same.length ? same : episodes;
   });
+  /* ---------- Formato que o navegador não toca direto: avisa e sugere o app ---------- */
+  // format = o servidor está convertendo o vídeo; audio = só o som; slow = carregando direto há muito tempo
+  let convReason = $state<'' | 'format' | 'audio'>('');
+  let slowLoad = $state(false);
+  let promoOpen = $state(false);          // cartão grande (enquanto carrega) ou faixa compacta (já tocando)
+  let promoTimer: ReturnType<typeof setTimeout> | undefined;
+  let slowTimer: ReturnType<typeof setTimeout> | undefined;
+  const ua = navigator.userAgent;
+  const appTarget = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? 'ios' : 'desktop';
+  const appLabel = appTarget === 'android' ? 'app para Android' : appTarget === 'desktop' ? 'app para computador' : 'app para Android ou computador';
+  function converting(reason: 'format' | 'audio') {
+    if (quality !== 0) return;             // qualidade menor escolhida pela pessoa: não é limitação do navegador
+    convReason = reason;
+    slowLoad = false;
+    if (session.settings.appHint) promoOpen = true;
+  }
+  function closePromo() { promoOpen = false; clearTimeout(promoTimer); }
+  function neverPromo() { session.set('appHint', false); closePromo(); toast.show('Tudo bem. Dá para religar em Ajustes.'); }
+  function openDownloads() { window.open('#/downloads', '_blank', 'noopener'); }
+  /** Pessoa cansou de esperar o arquivo original: pede a conversão no mesmo ponto. */
+  function forceConvert() { slowLoad = false; fail('carregamento lento', 'other'); }
+  // Carregando há mais de 12 s sem imagem: explica o que está acontecendo e oferece a conversão
+  $effect(() => {
+    clearTimeout(slowTimer);
+    if (mode !== 'vod' || !waiting || error) { if (!waiting) slowLoad = false; return; }
+    slowTimer = setTimeout(() => { if (waiting && !error) { slowLoad = true; if (session.settings.appHint && (!isHls || convReason)) promoOpen = true; } }, 12_000);
+    return () => clearTimeout(slowTimer);
+  });
+  // Já tocando: a mensagem vira uma faixa discreta e some sozinha
+  $effect(() => {
+    if (!playing || !promoOpen) return;
+    clearTimeout(promoTimer);
+    promoTimer = setTimeout(() => (promoOpen = false), 12_000);
+    return () => clearTimeout(promoTimer);
+  });
+
   // Aviso do avanço/recuo pelas setas
   let osd = $state('');
   let osdTimer: ReturnType<typeof setTimeout> | undefined;
@@ -286,7 +323,8 @@
       hlsTier = kind === 'video' ? 2 : hlsTier + 1;
       if (kind === 'audio') failedAudio = true;
       console.info('[StreamBox] reprodução falhou (' + msg + '), etapa ' + from + ' → ' + hlsTier);
-      toast.show(kind === 'audio' ? 'Convertendo só o áudio no servidor…' : 'Convertendo no servidor…');
+      if (!session.settings.appHint || quality !== 0) toast.show(kind === 'audio' ? 'Convertendo só o áudio no servidor…' : 'Convertendo no servidor…');
+      converting(kind === 'audio' ? 'audio' : 'format');
       startVodHls(video.currentTime || pendingStart || 0);
       return;
     }
@@ -363,7 +401,7 @@
     // Com o perfil do navegador o servidor indica TranscodingUrl quando precisa converter;
     // fonte HLS (.strm) o servidor sempre mandaria converter, mas o hls.js toca direto
     if (quality === 0 && (!source?.TranscodingUrl || isHlsSource(source))) startOriginal(start);
-    else startVodHls(start);
+    else { if (source?.TranscodingUrl && !isHlsSource(source)) converting('format'); startVodHls(start); }
   }
 
   async function loadExtras(it: Item) {
@@ -588,6 +626,7 @@
   function chooseQuality(i: number) {
     menu = null;
     if (i === quality) return;
+    closePromo(); convReason = '';
     quality = i; session.set('quality', QUALITIES[i][1]);
     if (i === 0) { hlsTier = 0; failedAudio = false; }
     reloadAt();
@@ -719,6 +758,46 @@
   {#if error}
     <div class="err"><p>{error}</p><button class="btn primary" onclick={back}>Voltar</button></div>
   {/if}
+
+  {#if mode === 'vod' && !error && (convReason || (slowLoad && !isHls))}
+    {#if waiting}
+      <!-- Carregando: explica o que está acontecendo -->
+      <div class="conv" class:withpromo={promoOpen}>
+        {#if slowLoad && !isHls}
+          <strong>Está demorando para abrir?</strong>
+          <p>Este arquivo pode não ser compatível com o seu navegador. O servidor pode convertê-lo para tocar aqui.</p>
+          <button class="pill primary sel" onclick={forceConvert}><Icon name="refresh" size={18} /> Converter no servidor</button>
+        {:else if convReason}
+          <strong>{convReason === 'audio' ? 'Convertendo o áudio no servidor…' : 'Convertendo no servidor…'}</strong>
+          <p>{convReason === 'audio' ? 'O som deste vídeo não é suportado pelo navegador.' : 'Este formato de vídeo não roda direto no navegador.'}
+            {slowLoad ? ' Na primeira vez a conversão pode levar até um minuto.' : ' Isso leva alguns segundos.'}</p>
+        {/if}
+        {#if promoOpen}
+          <div class="promo">
+            <span class="pic"><Icon name={appTarget === 'android' ? 'android' : 'desktop'} size={30} /></span>
+            <div class="ptxt">
+              <b>Assista com qualidade máxima no app {CONFIG.title}</b>
+              <small>No {appLabel} este vídeo toca direto, <em>na qualidade original</em>, sem conversão e sem espera.</small>
+              <div class="prow">
+                {#if CONFIG.downloads}<button class="pill primary" onclick={openDownloads}><Icon name="download" size={18} /> Baixar o app</button>{/if}
+                <button class="pill" onclick={closePromo}>Agora não</button>
+                <button class="lnk" onclick={neverPromo}>Não mostrar mais</button>
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
+    {:else if promoOpen}
+      <!-- Já tocando: faixa compacta que some sozinha -->
+      <div class="promo-strip">
+        <Icon name={appTarget === 'android' ? 'android' : 'desktop'} size={22} />
+        <span><b>Convertido para o navegador.</b> No app {CONFIG.title} este vídeo toca na qualidade original.</span>
+        {#if CONFIG.downloads}<button class="pill primary sm" onclick={openDownloads}>Baixar o app</button>{/if}
+        <button class="x" aria-label="Fechar" onclick={closePromo}><Icon name="close" size={18} /></button>
+      </div>
+    {/if}
+  {/if}
+  {#if fullscreen}<NoticeCards inPlayer />{/if}
 
   {#if showNext && next}
     <div class="next" class:lifted={showUi}>
@@ -887,6 +966,7 @@
         <h4>Qualidade</h4>
         {#each QUALITIES as q, i}<button class:on={quality === i} onclick={() => chooseQuality(i)}>{q[0]}</button>{/each}
         <p class="note">{isHls ? 'Convertido pelo servidor' : 'Arquivo original'}</p>
+        {#if isHls && convReason}<p class="note">Para a qualidade original sem conversão, use o app {CONFIG.title}{CONFIG.downloads ? ' (Ajustes → Downloads)' : ''}.</p>{/if}
       {/if}
     </div>
   {/if}
@@ -995,4 +1075,24 @@
   .next small{color:#bdbdbd}
   .next-row{display:flex;gap:10px;margin-top:10px}
   @media (max-width:600px){.skip,.next{right:16px}.skip.lifted,.next.lifted{bottom:130px}}
+  .conv{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);z-index:3;width:min(520px,calc(100vw - 32px));display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+  .conv.withpromo{top:auto;bottom:max(14vh,110px)}
+  .conv strong{font-size:18px}
+  .conv p{margin:0;color:#cfcfcf;font-size:14px;line-height:1.45}
+  .conv > .pill{margin-top:4px}
+  .promo{margin-top:12px;display:flex;gap:14px;align-items:flex-start;text-align:left;padding:16px 18px;border-radius:16px;background:rgba(18,18,18,.95);border:1px solid rgba(255,122,0,.45);box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  .pic{width:52px;height:52px;flex:none;border-radius:14px;background:var(--orange);color:#000;display:grid;place-items:center}
+  .ptxt{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .ptxt b{font-size:16px}
+  .ptxt small{color:#c9c9c9;font-size:13.5px;line-height:1.45}
+  .ptxt em{color:var(--orange);font-style:normal;font-weight:700}
+  .prow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+  .prow .pill{padding:9px 14px;font-size:14px}
+  .lnk{background:none;border:0;color:#9a9a9a;font:inherit;font-size:13px;cursor:pointer;text-decoration:underline;padding:4px}
+  .promo-strip{position:absolute;top:84px;left:50%;transform:translateX(-50%);z-index:3;width:max-content;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border-radius:14px;background:rgba(18,18,18,.92);border:1px solid rgba(255,122,0,.4);font-size:14px;transition:opacity .3s}
+  .promo-strip b{color:var(--orange)}
+  .promo-strip .sm{padding:7px 12px;font-size:13px}
+  .promo-strip .x{width:32px;height:32px;border:0;background:transparent;color:#aaa;cursor:pointer;display:grid;place-items:center;border-radius:50%}
+  .promo-strip .x:hover{color:#fff}
+  @media (max-width:600px){.promo-strip{top:70px;font-size:13px}.promo{padding:14px}.pic{width:42px;height:42px}}
 </style>

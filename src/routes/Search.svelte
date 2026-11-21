@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { requests } from '../lib/requests.svelte';
   import MediaCard from '../lib/components/MediaCard.svelte';
   import Icon from '../lib/components/Icon.svelte';
   import { jf, img, progress, isSeries, friendly } from '../lib/api/jellyfin';
@@ -56,6 +57,7 @@
     try {
       const season = i.kind === 'series' ? (s.season >= 0 ? i.seasons[s.season] : i.seasons.length === 1 ? i.seasons[0] : null) : null;
       const r = await indexer.request(i, season);
+      requests.record({ source: 'strm', kind: i.kind, title: i.title, year: i.catalog_year ?? i.year });
       for (;;) {
         await sleep(3000);
         const x = await indexer.status(r.id).catch(() => null);
@@ -81,6 +83,8 @@
     try {
       await seerr.request(r, r.mediaType === 'tv' && s.seasons && s.season >= 0 ? [s.seasons[s.season]] : null);
       s.state = 'requested'; s.msg = 'Pedido enviado ao Seerr.';
+      requests.record({ source: 'seerr', kind: r.mediaType === 'tv' ? 'series' : 'movie', title: r.title ?? r.name ?? '', tmdbId: r.id,
+        year: Number((r.releaseDate ?? r.firstAirDate ?? '').slice(0, 4)) || null });
     } catch (e) { s.state = 'error'; s.msg = friendly(e); }
   }
 </script>

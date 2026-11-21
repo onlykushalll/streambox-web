@@ -14,11 +14,16 @@ export interface Settings {
   seerrKey: string;
   seerrUser: string;
   hideWatched: boolean;   // tela inicial: esconder filmes e séries já assistidos (vem ligado)
+  noticeNew: boolean;       // avisar novidades do catálogo
+  noticeRequested: boolean; // avisar quando um pedido chegar
+  notifyBrowser: boolean;   // também como notificação do navegador (aba em segundo plano)
+  appHint: boolean;         // player: sugerir o app quando o navegador precisa de conversão
 }
 
 const DEFAULTS: Settings = {
   quality: 0, subLang: 'por', subSize: 1, subColor: 0, subBg: 0, screensaver: 5,
   m3u: '', epg: '', seerrKey: '', seerrUser: '', hideWatched: true,
+  noticeNew: true, noticeRequested: true, notifyBrowser: false, appHint: true,
 };
 
 export const SUB_SIZES: [string, number][] = [['Pequeno', 0.8], ['Médio', 1], ['Grande', 1.25], ['Muito grande', 1.55]];

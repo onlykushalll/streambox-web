@@ -11,6 +11,8 @@
   import { favorites } from '../lib/favorites.svelte';
   import type { Item } from '../lib/types';
   import { session } from '../lib/session.svelte';
+  import { forYou } from '../lib/recommendations';
+  import { requests } from '../lib/requests.svelte';
 
   let loaded = $state<Data | null>(cache.home ?? null);
   // "Ocultar assistidos" (Ajustes, vem ligado): o que for marcado como visto some na hora
@@ -18,6 +20,8 @@
   const data = $derived(loaded && {
     ...loaded, featured: unseen(loaded.featured), favs: unseen(loaded.favs),
     latest: loaded.latest.map(([n, l]): [string, Item[]] => [n, unseen(l)]),
+    because: (loaded.because ?? []).map(([n, l]): [string, Item[]] => [n, l.filter((x) => !watched.isPlayed(x))]).filter(([, l]) => l.length >= 4),
+    arrived: unseen(loaded.arrived ?? []),
   });
   let error = $state('');
 
@@ -31,11 +35,18 @@
       const latest = await Promise.all(libs.map(async (v) => [v.Name, await safe(jf.latest(v.Id, itemTypesFor(v.CollectionType)!))] as [string, Item[]]));
       const featured: Item[] = [];
       for (let i = 0; i < Math.max(m.length, s.length); i++) { if (m[i]) featured.push(m[i]); if (s[i]) featured.push(s[i]); }
-      loaded = cache.home = { featured, resume, next, favs, latest };
+      // "Para você que assistiu…" e "Seu pedido chegou" chegam depois, sem atrasar o resto da tela
+      const prev = loaded;
+      loaded = cache.home = { featured, resume, next, favs, latest, because: prev?.because ?? [], arrived: prev?.arrived ?? [] };
+      loadExtras(resume);
     } catch (e) { if (!loaded) error = friendly(e); }
   }
+  async function loadExtras(resume: Item[]) {
+    const [because, arrived] = await Promise.all([forYou(resume).catch(() => []), requests.arrived().catch(() => [])]);
+    if (loaded) loaded = cache.home = { ...loaded, because, arrived };
+  }
   // recarrega ao abrir e sempre que algo for marcado como visto/não visto
-  $effect(() => { watched.version; favorites.version; session.settings.hideWatched; untrack(load); });
+  $effect(() => { watched.version; favorites.version; requests.version; session.settings.hideWatched; untrack(load); });
 
   /* ---------- layout: spotlight (tela larga) ou carrossel (celular) ---------- */
   const mq = matchMedia('(min-width: 901px) and (min-height: 600px)');
@@ -69,12 +80,23 @@
   function playOrOpen(it: Item) {
     if (isSeries(it) || it.Type === 'BoxSet') go(`/item/${it.Id}`); else go(`/play/${it.Id}`);
   }
+  /* ---------- destaque encolhe ao rolar as fileiras (volta ao chegar no topo) ---------- */
+  let compact = $state(false);
+  function onRowsScroll(e: Event) {
+    const y = (e.currentTarget as HTMLElement).scrollTop;
+    // margem entre os dois limites: a mudança de altura não fica alternando
+    if (!compact && y > 90) compact = true;
+    else if (compact && y < 40) compact = false;   // 1ª fileira em foco pelo teclado fica a ~26px do topo
+  }
   const detailsOf = (it: Item) => go(`/item/${isEpisode(it) ? it.SeriesId ?? it.Id : it.Id}`);
 </script>
 
 <script lang="ts" module>
   import type { Item as ModItem } from '../lib/types';
-  export type Data = { featured: ModItem[]; resume: ModItem[]; next: ModItem[]; favs: ModItem[]; latest: [string, ModItem[]][] };
+  export type Data = {
+    featured: ModItem[]; resume: ModItem[]; next: ModItem[]; favs: ModItem[]; latest: [string, ModItem[]][];
+    because?: [string, ModItem[]][]; arrived?: ModItem[];
+  };
   export const cache: { home?: Data } = {};
 </script>
 
@@ -94,6 +116,24 @@
       {#each d.next as it (it.Id)}
         <MediaCard landscape width={280} title={it.SeriesName ?? it.Name} subtitle={episodeLabel(it)} image={img.landscape(it)}
           played={watched.isPlayed(it)} onspot={onspot ? () => onspot(it) : undefined} onclick={() => go(`/item/${it.Id}`)} />
+      {/each}
+    </Row>
+  {/if}
+  {#each d.because ?? [] as [name, list] (name)}
+    <Row title={`Para você que assistiu ${name}`}>
+      {#each list as it (it.Id)}
+        <MediaCard width={160} title={it.Name} subtitle={String(it.ProductionYear ?? '')} image={img.poster(it)} rating={it.CommunityRating}
+          onspot={onspot ? () => onspot(it) : undefined} onclick={() => go(`/item/${it.Id}`)} />
+      {/each}
+    </Row>
+  {/each}
+  {#if d.arrived?.length}
+    <Row title="Seu pedido chegou">
+      {#each d.arrived as it (it.Id)}
+        <MediaCard width={160} title={it.Name} subtitle={String(it.ProductionYear ?? '')} image={img.poster(it)} rating={it.CommunityRating}
+          played={watched.isPlayed(it)}
+          badge={(it.UserData?.UnplayedItemCount ?? 0) > 0 && !watched.isPlayed(it) ? String(it.UserData?.UnplayedItemCount) : 'NOVO'}
+          onspot={onspot ? () => onspot(it) : undefined} onclick={() => go(`/item/${it.Id}`)} />
       {/each}
     </Row>
   {/if}
@@ -123,7 +163,7 @@
 {/snippet}
 
 {#if data && wide}
-  <div class="stage">
+  <div class="stage" class:compact>
     <div class="bgwrap" aria-hidden="true">
       {#key bg}
         {#if bg}<div class="bg" style={`background-image:url("${bg}")`} transition:fade={{ duration: 650 }}></div>{/if}
@@ -163,7 +203,7 @@
       </section>
     {/if}
 
-    <div class="rows">{@render rows(data, spot)}</div>
+    <div class="rows" onscroll={onRowsScroll}>{@render rows(data, spot)}</div>
   </div>
 {:else if data}
   <Hero slides={data.featured} />
@@ -177,12 +217,17 @@
 <style>
   /* Tela larga: informações em cima, fileiras rolando embaixo (estilo Wholphin) */
   .stage{position:relative;height:100vh;margin-bottom:-20px;display:flex;flex-direction:column;overflow:hidden}
-  .bgwrap{position:absolute;inset:0;pointer-events:none}
+  .bgwrap{position:absolute;inset:0;pointer-events:none;transition:opacity .35s}
+  /* Rolando: só nome e informações do título em foco, numa faixa baixa */
+  .compact .spot{height:clamp(96px,14vh,120px);padding-top:16px;padding-bottom:6px;gap:6px}
+  .compact .spot .eyebrow,.compact .spot h3,.compact .spot p,.compact .spot .actions,.compact .spot .dots{display:none}
+  .compact .spot h1{font-size:clamp(22px,2.2vw,30px);-webkit-line-clamp:1;line-clamp:1}
+  .compact .bgwrap{opacity:.35}
   .bg{position:absolute;top:0;right:0;width:76%;height:76%;background-size:cover;background-position:center 22%}
   .shade{position:absolute;inset:0;background:
     linear-gradient(90deg,var(--black) 0%,rgba(10,10,10,.94) 26%,rgba(10,10,10,.35) 58%,transparent 100%),
     linear-gradient(180deg,transparent 0%,rgba(10,10,10,.45) 40%,var(--black) 70%)}
-  .spot{position:relative;flex:none;height:min(48vh,420px);padding:clamp(24px,5vh,56px) var(--pad) 10px;max-width:760px;display:flex;flex-direction:column;gap:9px;justify-content:flex-end}
+  .spot{position:relative;flex:none;height:min(48vh,420px);transition:height .35s var(--ease,ease),padding .35s var(--ease,ease);padding:clamp(24px,5vh,56px) var(--pad) 10px;max-width:760px;display:flex;flex-direction:column;gap:9px;justify-content:flex-end}
   .eyebrow{color:var(--orange);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase}
   h1{font-size:clamp(28px,3.6vw,48px);font-weight:800;line-height:1.05;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   h3{font-size:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

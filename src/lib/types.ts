@@ -6,6 +6,7 @@ export interface UserData {
   Played?: boolean;
   UnplayedItemCount?: number;
   IsFavorite?: boolean;
+  LastPlayedDate?: string;
 }
 
 export interface Item {
@@ -38,6 +39,8 @@ export interface Item {
   StartDate?: string;
   EndDate?: string;
   Chapters?: { StartPositionTicks: number; Name?: string }[];
+  DateCreated?: string;
+  ProviderIds?: Record<string, string>;
 }
 
 /** Trecho marcado no servidor (Jellyfin 10.10+). */
@@ -144,4 +147,16 @@ export interface SeerrResult {
   posterPath?: string;
   overview?: string;
   mediaInfo?: { status: number };
+}
+
+/** Pedido do usuário no STRM Indexer (de qualquer aparelho). */
+export interface IndexerRequest {
+  id: string;
+  kind: string;
+  title: string;
+  year?: number | null;
+  season?: number | null;
+  state: string;
+  message?: string;
+  created_at?: number;
 }
